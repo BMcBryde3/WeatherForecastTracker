@@ -22,6 +22,7 @@ app.use('/searchHistory', express.static(path.join(__dirname, '../db/searchHisto
 
 
 
+
 // TODO: Implement middleware for parsing JSON and 
 app.use(express.json());
 //urlencoded form data
