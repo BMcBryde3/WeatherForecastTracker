@@ -83,7 +83,7 @@ class WeatherService {
   }
   // TODO: Create buildWeatherQuery method
   private buildWeatherQuery(coordinates: Coordinates): string {
-    const query = `${this.baseURL}/data/2.5/forecast?lat=${coordinates.lat}&lon=${coordinates.lon}&appid=${this.apiKey}&units=imperial&cnt=5`;
+    const query = `${this.baseURL}/data/2.5/forecast?lat=${coordinates.lat}&lon=${coordinates.lon}&appid=${this.apiKey}&units=imperial`;
     return query;
   }
   // TODO: Create fetchAndDestructureLocationData method
@@ -99,7 +99,7 @@ class WeatherService {
     // console.log('Weather Query:', query); // Add logging
     const response = await fetch(query);
     const responseText = await response.text();
-    // console.log('Weather Response:', responseText); // Add logging
+    console.log('Weather Response:', responseText); // Add logging
   
     if (!response.ok) {
       throw new Error('Unable to retrieve weather data');
@@ -107,7 +107,7 @@ class WeatherService {
   
     try {
       const weatherData = JSON.parse(responseText);
-      // console.log('Weather data:', weatherData); // Add logging
+      console.log('Weather data:', weatherData); // Add logging
       return weatherData;
     } catch (parseError) {
       console.error('Error parsing weather JSON:', parseError);
@@ -126,7 +126,7 @@ class WeatherService {
   
     const currentWeather = new Weather(
       response.city.name,
-      new Date().toISOString(), // Add the current date
+      currentWeatherResponse.dt_txt.split(' ')[0],
       response.city.coord.lat,
       response.city.coord.lon,
       currentWeatherResponse.main.temp,
@@ -141,35 +141,36 @@ class WeatherService {
   }
   // TODO: Complete buildForecastArray method
   private buildForecastArray(weatherData: any): any[] {
-    if (!weatherData || !weatherData.list) {
-      console.error('Invalid weather data:', weatherData);
-      throw new Error('Invalid weather data');
+    if (!weatherData?.list) {
+        console.error('Invalid weather data:', weatherData);
+        throw new Error('Invalid weather data');
     }
-  
-    const specificWeatherData = weatherData.list.map((day: any) => {
-      console.log('Day Data:', day); // Add logging
-      if (!day.main || !day.weather || !day.weather[0]) {
-        console.error('Invalid day data:', day);
-        throw new Error('Invalid day data');
-      }
-  
-      return new Weather(
-        weatherData.city.name,
-        new Date(day.dt_txt).toISOString(), // Add the date from the weather data
-        weatherData.city.coord.lat,
-        weatherData.city.coord.lon,
-        day.main.temp,
-        day.main.humidity,
-        day.wind.speed,
-        day.weather[0].description,
-        day.weather[0].icon
-      );
+
+    const uniqueDays: { [key: string]: boolean } = {};
+    const forecastArray: Weather[] = [];
+
+    weatherData.list.forEach((day: any) => {
+        const date = day.dt_txt.split(' ')[0]; // Extract the date part
+        if (!uniqueDays[date]) {
+            uniqueDays[date] = true;
+            console.log('Day Data:', day);
+            if (!day.main || !day.weather?.[0]) {
+                console.error('Invalid day data:', day);
+                throw new Error('Invalid day data');
+            }
+
+            const { name, coord: { lat, lon } } = weatherData.city;
+            const { temp, humidity } = day.main;
+            const { speed } = day.wind;
+            const { description, icon } = day.weather[0];
+
+            forecastArray.push(new Weather(name, date, lat, lon, temp, humidity, speed, description, icon));
+        }
     });
-  
-    // console.log('Filtered Weather Data:', specificWeatherData); // Add logging
-    return specificWeatherData;
-  }
-  // TODO: Complete getWeatherForCity method
+
+    return forecastArray;
+}
+
   public async getWeatherForCity(cityName: string): Promise<{ currentWeather: Weather, forecastArray: any[] }> {
     try {
       this.cityName = cityName; // Ensure cityName is set
